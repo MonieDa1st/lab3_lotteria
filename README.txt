@@ -43,4 +43,7 @@ Cách chạy vài thứ mới mò đc:
     +Ở metamask, chọn Network -> add Network tuỳ chỉnh, 
 điền các thông số tương tự, skip cái URL trình khám phá khối
 ==>Khi vào đúng acc + network thấy 10k eth là ok
-chạy front end thì sài lệnh npm run dev
+thứ tự chạy (3 terminal khác nhau):
+npx hardhat node
+npx hardhat run scripts/deploy.ts --network localhost
+npm run dev
