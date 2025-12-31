@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-f07152021132641bbb07a18754639e45c62d3978",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "userSourceNameMap": {
+    "contracts/Lottery.sol": "project/contracts/Lottery.sol",
+    "contracts/VRFMock.sol": "project/contracts/VRFMock.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/Lottery.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\n/* =========================\r\n   Errors\r\n   ========================= */\r\nerror Lottery__NotEnoughETH();\r\nerror Lottery__LotteryNotOpen();\r\nerror Lottery__TransferFailed();\r\n\r\n/* =========================\r\n   Interface VRF Mock\r\n   ========================= */\r\ninterface IVRFCoordinatorV2Mock {\r\n    function requestRandomWords(\r\n        bytes32 keyHash,\r\n        uint64 subId,\r\n        uint16 requestConfirmations,\r\n        uint32 callbackGasLimit,\r\n        uint32 numWords\r\n    ) external returns (uint256);\r\n\r\n    function fulfillRandomWords(uint256 requestId, address consumer) external;\r\n}\r\n\r\n/* =========================\r\n   Lottery ETH-weighted\r\n   ========================= */\r\ncontract Lottery {\r\n    /* ========== Types ========== */\r\n    enum LotteryState {\r\n        OPEN,\r\n        CALCULATING\r\n    }\r\n\r\n    /* ========== State variables ========== */\r\n    IVRFCoordinatorV2Mock private immutable i_vrfCoordinator;\r\n    uint64 private immutable i_subscriptionId;\r\n\r\n    LotteryState private s_state;\r\n\r\n    address[] private s_players;\r\n    mapping(address => uint256) private s_ethContributed;\r\n    uint256 private s_totalEth;\r\n\r\n    address private s_recentWinner;\r\n\r\n    /* ========== Events ========== */\r\n    event PlayerEntered(address indexed player, uint256 amount);\r\n    event RandomnessRequested(uint256 requestId);\r\n    event WinnerPicked(address indexed winner, uint256 reward);\r\n\r\n    /* ========== Constructor ========== */\r\n    constructor(address vrfCoordinator, uint64 subscriptionId) {\r\n        i_vrfCoordinator = IVRFCoordinatorV2Mock(vrfCoordinator);\r\n        i_subscriptionId = subscriptionId;\r\n        s_state = LotteryState.OPEN;\r\n    }\r\n\r\n    /* ========== External functions ========== */\r\n\r\n    /// @notice Enter lottery with ETH (weight = ETH amount)\r\n    function enter() external payable {\r\n        if (s_state != LotteryState.OPEN) revert Lottery__LotteryNotOpen();\r\n        if (msg.value == 0) revert Lottery__NotEnoughETH();\r\n\r\n        if (s_ethContributed[msg.sender] == 0) {\r\n            s_players.push(msg.sender);\r\n        }\r\n\r\n        s_ethContributed[msg.sender] += msg.value;\r\n        s_totalEth += msg.value;\r\n\r\n        emit PlayerEntered(msg.sender, msg.value);\r\n    }\r\n\r\n    /// @notice Trigger VRF mock request\r\n    function pickWinner() external {\r\n        if (s_state != LotteryState.OPEN) revert Lottery__LotteryNotOpen();\r\n        if (s_totalEth == 0) revert Lottery__NotEnoughETH();\r\n\r\n        s_state = LotteryState.CALCULATING;\r\n\r\n        uint256 requestId = i_vrfCoordinator.requestRandomWords(\r\n            0x0, // dummy keyHash\r\n            i_subscriptionId,\r\n            3, // request confirmations dummy\r\n            200_000, // callback gas limit\r\n            1 // num words\r\n        );\r\n\r\n        emit RandomnessRequested(requestId);\r\n    }\r\n\r\n    /// @notice Callback from VRF mock\r\n    function fulfillRandomWords(uint256, uint256[] memory randomWords) external {\r\n        uint256 rand = randomWords[0] % s_totalEth;\r\n\r\n        uint256 cumulative;\r\n        address winner;\r\n\r\n        for (uint256 i = 0; i < s_players.length; i++) {\r\n            address player = s_players[i];\r\n            cumulative += s_ethContributed[player];\r\n            if (rand < cumulative) {\r\n                winner = player;\r\n                break;\r\n            }\r\n        }\r\n\r\n        s_recentWinner = winner;\r\n        s_state = LotteryState.OPEN;\r\n\r\n        // reset balances\r\n        for (uint256 i = 0; i < s_players.length; i++) {\r\n            s_ethContributed[s_players[i]] = 0;\r\n        }\r\n        delete s_players;\r\n        uint256 prize = address(this).balance;\r\n        s_totalEth = 0;\r\n\r\n        (bool success, ) = winner.call{value: prize}(\"\");\r\n        if (!success) revert Lottery__TransferFailed();\r\n\r\n        emit WinnerPicked(winner, prize);\r\n    }\r\n\r\n    /* ========== View functions ========== */\r\n    function getPlayers() external view returns (address[] memory) {\r\n        return s_players;\r\n    }\r\n\r\n    function getContribution(address player) external view returns (uint256) {\r\n        return s_ethContributed[player];\r\n    }\r\n\r\n    function getTotalEth() external view returns (uint256) {\r\n        return s_totalEth;\r\n    }\r\n\r\n    function getRecentWinner() external view returns (address) {\r\n        return s_recentWinner;\r\n    }\r\n\r\n    function getLotteryState() external view returns (LotteryState) {\r\n        return s_state;\r\n    }\r\n}\r\n"
+      },
+      "project/contracts/VRFMock.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ncontract VRFMock {\r\n    uint64 public s_subId;\r\n\r\n    constructor() {}\r\n    \r\n    function createSubscription() external returns (uint64) {\r\n        s_subId++;\r\n        return s_subId;\r\n    }\r\n\r\n    function getCurrentSubId() external view returns (uint64) {\r\n        return s_subId;\r\n    }\r\n\r\n    function fundSubscription(uint64, uint96) external {}\r\n\r\n    function addConsumer(uint64, address) external {}\r\n\r\n    function requestRandomWords(\r\n        bytes32,\r\n        uint64,\r\n        uint16,\r\n        uint32,\r\n        uint32\r\n    ) external pure returns (uint256) {\r\n        return 1;\r\n    }\r\n\r\n    function fulfillRandomWords(uint256, address consumer) external {\r\n        uint256[] memory words = new uint256[](1);\r\n        words[0] = uint256(keccak256(abi.encodePacked(block.timestamp, consumer)));\r\n\r\n        (bool ok, ) = consumer.call(\r\n            abi.encodeWithSignature(\r\n                \"fulfillRandomWords(uint256,uint256[])\",\r\n                1,\r\n                words\r\n            )\r\n        );\r\n        require(ok, \"callback failed\");\r\n    }\r\n}\r\n"
+      }
+    }
+  }
+}
