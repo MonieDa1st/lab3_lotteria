@@ -1,8 +1,8 @@
 // Địa chỉ sau khi deploy (dán vào)
-export const LOTTERY_ADDRESS = "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9" as const;
+export const LOTTERY_ADDRESS = "0xc6e7df5e7b4f2a278906862b61205850344d4e7d" as const;
 
 // VRF mock (nếu bạn deploy VRFCoordinatorV2Mock, dán địa chỉ vào)
-export const VRF_MOCK_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3" as const;
+export const VRF_MOCK_ADDRESS = "0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae" as const;
 
 // (Tuỳ chọn) địa chỉ “admin” chỉ để UI disable/enable nút (on-chain không chặn)
 export const UI_ADMIN = "0xYOUR_ADMIN_ADDRESS_HERE" as const;

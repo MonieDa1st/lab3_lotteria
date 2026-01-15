@@ -1,58 +1,71 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+# Hướng dẫn setup & chạy dự án (Local)
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+## Yêu cầu môi trường
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+- **NodeJS >= 22** (khuyến nghị)
+  - Trên Windows nên dùng **Node Version Manager (NVM)** cài từ GitHub
+  - Có thể dùng installer hoặc Docker nếu quen
+  - Hiện tại project được test với **NodeJS 24 LTS**
 
-## Project Overview
+## Setup MetaMask cho Localhost
 
-This example project includes:
+> Yêu cầu: đã cài MetaMask và chạy trên **chính máy local**
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+### Bước 1: Chạy Hardhat node
 
-## Usage
-
-### Running Tests
-
-To run all the tests in the project, execute the following command:
-
-```shell
-npx hardhat test
+```bash
+npx hardhat node
 ```
 
-You can also selectively run the Solidity or `node:test` tests:
+- Terminal sẽ hiện ~20 account
+- Mỗi account có:
+  - Address
+  - Private Key
+  - ~10,000 ETH local
 
-```shell
-npx hardhat test solidity
-npx hardhat test nodejs
+---
+
+### Bước 2: Import account vào MetaMask
+
+1. Mở MetaMask
+2. Chọn **Add account / Import account**
+3. Dán **Private Key** lấy từ terminal Hardhat node
+
+---
+
+### Bước 3: Thêm network Localhost vào MetaMask
+
+Chọn **Add network (Custom RPC)** và điền:
+
+- **Network Name**: Tuỳ ý
+- **RPC URL**: `http://127.0.0.1:8545`
+- **Chain ID**: `31337`
+- **Currency Symbol**: Tuỳ ý
+- **Block Explorer URL**: bỏ trống (skip)
+
+ Khi chọn đúng **account + network** mà thấy **~10,000 ETH** là OK
+
+---
+
+## Thứ tự chạy (3 terminal riêng biệt)
+
+### Terminal 1 – chạy blockchain local
+
+```bash
+npx hardhat node
 ```
 
-### Make a deployment to Sepolia
+### Terminal 2 – deploy contract
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
-
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
+```bash
+npx hardhat run scripts/deploy.ts --network localhost
 ```
+Sau khi chạy xong, terminal sẽ in ra địa chỉ contract vừa deploy local
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+Copy địa chỉ contract này và dán vào frontend/src/contract.ts để frontend biết gọi đúng smart contract
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+### Terminal 3 – chạy Frontend
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+```bash
+npm run dev
 ```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
-"# lotteria" 
